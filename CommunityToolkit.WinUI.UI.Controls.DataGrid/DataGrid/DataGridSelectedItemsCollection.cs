@@ -5,7 +5,6 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics;
 using CommunityToolkit.WinUI.UI.Controls.DataGridInternals;
 using CommunityToolkit.WinUI.Utilities;
 using Microsoft.UI.Xaml.Controls;
@@ -333,21 +332,20 @@ namespace CommunityToolkit.WinUI.UI.Controls
             // have been added and removed since the last time this method was called
             foreach (int newSlot in _selectedSlotsTable.GetIndexes())
             {
-                object newItem = this.OwningGrid.DataConnection.GetDataItem(this.OwningGrid.RowIndexFromSlot(newSlot));
-                if (_oldSelectedSlotsTable.Contains(newSlot))
+                if (!_oldSelectedSlotsTable.Contains(newSlot))
                 {
-                    _oldSelectedSlotsTable.RemoveValue(newSlot);
-                    _oldSelectedItemsCache.Remove(newItem);
-                }
-                else
-                {
+                    var newItem = this.OwningGrid.DataConnection.GetDataItem(this.OwningGrid.RowIndexFromSlot(newSlot));
                     addedSelectedItems.Add(newItem);
                 }
             }
 
-            foreach (object oldItem in _oldSelectedItemsCache)
+            foreach (var oldSlot in _oldSelectedSlotsTable.GetIndexes())
             {
-                removedSelectedItems.Add(oldItem);
+                if (!_selectedSlotsTable.Contains(oldSlot))
+                {
+                    var oldItem = this.OwningGrid.DataConnection.GetDataItem(this.OwningGrid.RowIndexFromSlot(oldSlot));
+                    removedSelectedItems.Add(oldItem);
+                }
             }
 
             // The current selection becomes the old selection
