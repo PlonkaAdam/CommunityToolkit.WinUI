@@ -153,7 +153,9 @@ namespace CommunityToolkit.WinUI.UI.Controls
         None,
         RemoveCurrentFromSelection,
         SelectCurrent,
-        SelectFromAnchorToCurrent
+        SelectFromAnchorToCurrent,
+        AddRangeToSelection,
+        RemoveRangeFromSelection
     }
 
     /// <summary>
