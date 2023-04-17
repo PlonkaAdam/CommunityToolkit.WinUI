@@ -149,6 +149,25 @@ namespace CommunityToolkit.WinUI.Utilities
         }
 
         /// <summary>
+        /// Returns true if any index from the range is contained in the table
+        /// </summary>
+        /// <param name="startIndex">beginning of the range</param>
+        /// <param name="endIndex">end of the range</param>
+        /// <returns>True if any of the indexes in the index range is present in the table</returns>
+        public bool ContainsAny(int startIndex, int endIndex)
+        {
+            foreach (var range in _list)
+            {
+                if (startIndex <= range.UpperBound && endIndex >= range.LowerBound)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
         /// Returns true if the given index is contained in the table with the the given value
         /// </summary>
         /// <param name="index">index to search for</param>

@@ -5,6 +5,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using CommunityToolkit.WinUI.UI.Controls.DataGridInternals;
 using CommunityToolkit.WinUI.Utilities;
 using Microsoft.UI.Xaml.Controls;
@@ -289,6 +290,25 @@ namespace CommunityToolkit.WinUI.UI.Controls
             return true;
         }
 
+        internal bool ContainsAny(int startSlot, int endSlot)
+        {
+            int itemSlot = this.OwningGrid.RowGroupHeadersTable.GetNextGap(startSlot - 1);
+            while (itemSlot <= endSlot)
+            {
+                // Skip over the RowGroupHeaderSlots
+                int nextRowGroupHeaderSlot = this.OwningGrid.RowGroupHeadersTable.GetNextIndex(itemSlot);
+                int lastItemSlot = nextRowGroupHeaderSlot == -1 ? endSlot : Math.Min(endSlot, nextRowGroupHeaderSlot - 1);
+                if (_selectedSlotsTable.ContainsAny(itemSlot, lastItemSlot))
+                {
+                    return true;
+                }
+
+                itemSlot = this.OwningGrid.RowGroupHeadersTable.GetNextGap(lastItemSlot);
+            }
+
+            return false;
+        }
+
         // Called when an item is deleted from the ItemsSource as opposed to just being unselected
         internal void Delete(int slot, object item)
         {
@@ -428,6 +448,7 @@ namespace CommunityToolkit.WinUI.UI.Controls
             }
             else
             {
+                var itemsToRemoveFromCache = new List<object>();
                 while (itemSlot <= endItemSlot)
                 {
                     // Remove the unselected item slots by skipping over the RowGroupHeaderSlots
@@ -438,10 +459,11 @@ namespace CommunityToolkit.WinUI.UI.Controls
                     {
                         if (_selectedSlotsTable.Contains(slot))
                         {
-                            _selectedItemsCache.Remove(this.OwningGrid.DataConnection.GetDataItem(this.OwningGrid.RowIndexFromSlot(slot)));
+                            itemsToRemoveFromCache.Add(this.OwningGrid.DataConnection.GetDataItem(this.OwningGrid.RowIndexFromSlot(slot)));
                         }
                     }
 
+                    _selectedItemsCache = _selectedItemsCache.Except(itemsToRemoveFromCache).ToList();
                     _selectedSlotsTable.RemoveValues(itemSlot, lastItemSlot - itemSlot + 1);
                     itemSlot = this.OwningGrid.RowGroupHeadersTable.GetNextGap(lastItemSlot);
                 }

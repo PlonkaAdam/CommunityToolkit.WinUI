@@ -4258,16 +4258,21 @@ namespace CommunityToolkit.WinUI.UI.Controls
                 switch (action)
                 {
                     case DataGridSelectionAction.AddCurrentToSelection:
-                        SetRowSelection(slot, true /*isSelected*/, true /*setAnchorIndex*/);
+                        SetRowSelection(slot, isSelected: true, setAnchorSlot: true);
                         break;
                     case DataGridSelectionAction.RemoveCurrentFromSelection:
-                        SetRowSelection(slot, false /*isSelected*/, false /*setAnchorRowIndex*/);
+                        SetRowSelection(slot, isSelected: false, setAnchorSlot: true);
                         break;
+                    case DataGridSelectionAction.AddRangeToSelection:
                     case DataGridSelectionAction.SelectFromAnchorToCurrent:
                         if (this.SelectionMode == DataGridSelectionMode.Extended && this.AnchorSlot != -1)
                         {
                             int anchorSlot = this.AnchorSlot;
-                            ClearRowSelection(slot /*slotException*/, false /*resetAnchorSlot*/);
+                            if (action == DataGridSelectionAction.SelectFromAnchorToCurrent)
+                            {
+                                ClearRowSelection(slotException: slot, setAnchorSlot: false);
+                            }
+
                             if (slot <= anchorSlot)
                             {
                                 SetRowsSelection(slot, anchorSlot);
@@ -4283,8 +4288,23 @@ namespace CommunityToolkit.WinUI.UI.Controls
                         }
 
                         break;
+                    case DataGridSelectionAction.RemoveRangeFromSelection:
+                        if (this.SelectionMode == DataGridSelectionMode.Extended && this.AnchorSlot != -1)
+                        {
+                            int anchorSlot = this.AnchorSlot;
+                            if (slot <= anchorSlot)
+                            {
+                                SetRowsSelection(slot, anchorSlot, false);
+                            }
+                            else
+                            {
+                                SetRowsSelection(anchorSlot, slot, false);
+                            }
+                        }
+
+                        break;
                     case DataGridSelectionAction.SelectCurrent:
-                        ClearRowSelection(slot /*rowIndexException*/, true /*setAnchorRowIndex*/);
+                        ClearRowSelection(slotException: slot, setAnchorSlot: true);
                         break;
                     case DataGridSelectionAction.None:
                         break;
@@ -8652,8 +8672,16 @@ namespace CommunityToolkit.WinUI.UI.Controls
                 DataGridSelectionAction action;
                 if (this.SelectionMode == DataGridSelectionMode.Extended && shift)
                 {
-                    // Shift select multiple rows.
-                    action = DataGridSelectionAction.SelectFromAnchorToCurrent;
+                    if (ctrl)
+                    {
+                        // Shift + ctrl select/deselect multiple rows.
+                        action = GetRowSelection(slot) ? DataGridSelectionAction.RemoveRangeFromSelection : DataGridSelectionAction.AddRangeToSelection;
+                    }
+                    else
+                    {
+                        // Shift select multiple rows.
+                        action = DataGridSelectionAction.SelectFromAnchorToCurrent;
+                    }
                 }
                 else if (GetRowSelection(slot))
                 {
@@ -8686,7 +8714,7 @@ namespace CommunityToolkit.WinUI.UI.Controls
                     }
                 }
 
-                UpdateSelectionAndCurrency(columnIndex, slot, action, false /*scrollIntoView*/);
+                UpdateSelectionAndCurrency(columnIndex, slot, action, scrollIntoView: false);
             }
             finally
             {
@@ -8695,7 +8723,7 @@ namespace CommunityToolkit.WinUI.UI.Controls
 
             if (_successfullyUpdatedSelection && beginEdit && BeginCellEdit(args))
             {
-                FocusEditingCell(true /*setFocus*/);
+                FocusEditingCell(setFocus: true);
             }
 
             return true;
@@ -8788,7 +8816,7 @@ namespace CommunityToolkit.WinUI.UI.Controls
                 else
 #endif
                 {
-                    this.ScrollSlotIntoView(editingRowSlot, false /*scrolledHorizontally*/);
+                    this.ScrollSlotIntoView(editingRowSlot, scrolledHorizontally: false);
                 }
             }
         }

@@ -759,7 +759,6 @@ namespace CommunityToolkit.WinUI.UI.Controls
 
         internal void SetRowSelection(int slot, bool isSelected, bool setAnchorSlot)
         {
-            DiagnosticsDebug.Assert(isSelected || !setAnchorSlot, "Expected isSelected is true or setAnchorSlot is false.");
             DiagnosticsDebug.Assert(!IsSlotOutOfSelectionBounds(slot), "Expected IsSlotOutOfSelectionBounds(slot) is false.");
             _noSelectionChangeCount++;
             try
@@ -795,7 +794,6 @@ namespace CommunityToolkit.WinUI.UI.Controls
             }
         }
 
-        // For now, all scenarios are for isSelected == true.
         internal void SetRowsSelection(int startSlot, int endSlot, bool isSelected = true)
         {
             DiagnosticsDebug.Assert(startSlot >= 0, "Expected startSlot is positive.");
@@ -811,6 +809,13 @@ namespace CommunityToolkit.WinUI.UI.Controls
                 {
                     // At least one row gets selected
                     SelectSlots(startSlot, endSlot, true);
+                    this.SelectionHasChanged = true;
+                }
+
+                if (!isSelected && _selectedItems.ContainsAny(startSlot, endSlot))
+                {
+                    // At least one row gets deselected
+                    SelectSlots(startSlot, endSlot, false);
                     this.SelectionHasChanged = true;
                 }
             }
