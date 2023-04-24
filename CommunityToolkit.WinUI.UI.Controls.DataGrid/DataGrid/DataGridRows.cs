@@ -3,9 +3,11 @@
 // See the LICENSE file in the project root for more information.
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Reflection;
 using CommunityToolkit.WinUI.UI.Automation.Peers;
 using CommunityToolkit.WinUI.UI.Controls.DataGridInternals;
 using CommunityToolkit.WinUI.UI.Utilities;
@@ -390,51 +392,71 @@ namespace CommunityToolkit.WinUI.UI.Controls
             return _selectedItems.ContainsSlot(slot);
         }
 
-        internal void InsertElementAt(
+        internal void InsertElementsAt(
             int slot,
             int rowIndex,
-            object item,
+            IList items,
             DataGridRowGroupInfo groupInfo,
             bool isCollapsed)
         {
+            DiagnosticsDebug.Assert(items != null, "Expected items to be not null.");
             DiagnosticsDebug.Assert(slot >= 0, "Expected positive slot.");
             DiagnosticsDebug.Assert(slot <= this.SlotCount, "Expected slot smaller than or equal to SlotCount.");
 
-            bool isRow = rowIndex != -1;
-            if (isCollapsed || (this.IsReadOnly && rowIndex == this.DataConnection.NewItemPlaceholderIndex))
+            var isRow = rowIndex != -1;
+            var updateVerticalScrollBarOnly = true;
+            foreach (var item in items)
             {
-                InsertElement(slot, null /*element*/, true /*updateVerticalScrollBarOnly*/, true /*isCollapsed*/, isRow);
-            }
-            else if (SlotIsDisplayed(slot))
-            {
-                // Row at that index needs to be displayed
-                if (isRow)
+                if (isCollapsed || (this.IsReadOnly && rowIndex == this.DataConnection.NewItemPlaceholderIndex))
                 {
-                    InsertElement(slot, GenerateRow(rowIndex, slot, item), false /*updateVerticalScrollBarOnly*/, false /*isCollapsed*/, isRow);
+                    InsertElement(slot, element: null, isCollapsed: true, isRow);
+                }
+                else if (SlotIsDisplayed(slot))
+                {
+                    updateVerticalScrollBarOnly = false;
+
+                    // Row at that index needs to be displayed
+                    if (isRow)
+                    {
+                        InsertElement(slot, GenerateRow(rowIndex, slot, item), isCollapsed: false, isRow);
+                    }
+                    else
+                    {
+                        InsertElement(slot, GenerateRowGroupHeader(slot, groupInfo), isCollapsed: false, isRow);
+                    }
                 }
                 else
                 {
-                    InsertElement(slot, GenerateRowGroupHeader(slot, groupInfo), false /*updateVerticalScrollBarOnly*/, false /*isCollapsed*/, isRow);
+                    if (_vScrollBar?.Visibility == Visibility.Collapsed)
+                    {
+                        updateVerticalScrollBarOnly = false;
+                    }
+
+                    InsertElement(slot, null, isCollapsed: false, isRow);
                 }
+
+                rowIndex++;
             }
-            else
-            {
-                InsertElement(slot, null, _vScrollBar == null || _vScrollBar.Visibility == Visibility.Visible /*updateVerticalScrollBarOnly*/, false /*isCollapsed*/, isRow);
-            }
+
+            OnInsertedElement_Phase2(slot, items.Count, updateVerticalScrollBarOnly, isCollapsed);
         }
 
-        internal void InsertRowAt(int rowIndex)
+        internal void InsertRowAt(int firstRowIndex, int count)
         {
-            int slot = SlotFromRowIndex(rowIndex);
-            object item = this.DataConnection.GetDataItem(rowIndex);
+            var slot = SlotFromRowIndex(firstRowIndex);
+            var items = new List<object>(count);
+            for (var i = 0; i < count; i++)
+            {
+                items.Add(DataConnection.GetDataItem(firstRowIndex + i));
+            }
 
             // isCollapsed below is always false because we only use the method if we're not grouping
-            InsertElementAt(
+            InsertElementsAt(
                 slot,
-                rowIndex,
-                item,
-                null /*DataGridRowGroupInfo*/,
-                false /*isCollapsed*/);
+                firstRowIndex,
+                items,
+                groupInfo: null,
+                isCollapsed: false);
         }
 
         internal bool IsColumnDisplayed(int columnIndex)
@@ -871,7 +893,7 @@ namespace CommunityToolkit.WinUI.UI.Controls
             OnAddedElement_Phase1(slot, element);
             this.SlotCount++;
             this.VisibleSlotCount++;
-            OnAddedElement_Phase2(slot, false /*updateVerticalScrollBarOnly*/);
+            OnAddedElement_Phase2(slot, 1, updateVerticalScrollBarOnly: false);
             OnElementsChanged(true /*grew*/);
         }
 
@@ -913,8 +935,8 @@ namespace CommunityToolkit.WinUI.UI.Controls
             {
                 this.SlotCount += totalSlots - slot;
                 this.VisibleSlotCount += totalSlots - slot;
-                OnAddedElement_Phase2(0, _vScrollBar == null || _vScrollBar.Visibility == Visibility.Visible /*updateVerticalScrollBarOnly*/);
-                OnElementsChanged(true /*grew*/);
+                OnAddedElement_Phase2(0, totalSlots - slot, updateVerticalScrollBarOnly: _vScrollBar == null || _vScrollBar.Visibility == Visibility.Visible);
+                OnElementsChanged(grew: true);
             }
         }
 
@@ -1985,7 +2007,7 @@ namespace CommunityToolkit.WinUI.UI.Controls
 
             if (wasNewlyAdded)
             {
-                this.DisplayData.CorrectSlotsAfterInsertion(slot, element, false /*isCollapsed*/);
+                this.DisplayData.CorrectSlotsAfterInsertion(slot, element, isCollapsed: false);
             }
             else
             {
@@ -1993,12 +2015,12 @@ namespace CommunityToolkit.WinUI.UI.Controls
             }
         }
 
-        private void InsertElement(int slot, UIElement element, bool updateVerticalScrollBarOnly, bool isCollapsed, bool isRow)
+        private void InsertElement(int slot, UIElement element, bool isCollapsed, bool isRow)
         {
             DiagnosticsDebug.Assert(slot >= 0, "Expected positive slot.");
             DiagnosticsDebug.Assert(slot <= this.SlotCount, "Expected slot smaller than or equal to SlotCount.");
 
-            OnInsertingElement(slot, true /*firstInsertion*/, isCollapsed, isRow);   // will throw an exception if the insertion is illegal
+            OnInsertingElement(slot, firstInsertion: true, isCollapsed, isRow);   // will throw an exception if the insertion is illegal
 
             OnInsertedElement_Phase1(slot, element, isCollapsed, isRow);
             this.SlotCount++;
@@ -2006,8 +2028,6 @@ namespace CommunityToolkit.WinUI.UI.Controls
             {
                 this.VisibleSlotCount++;
             }
-
-            OnInsertedElement_Phase2(slot, updateVerticalScrollBarOnly, isCollapsed);
         }
 
         private void InvalidateRowHeightEstimate()
@@ -2027,14 +2047,18 @@ namespace CommunityToolkit.WinUI.UI.Controls
             }
         }
 
-        private void OnAddedElement_Phase2(int slot, bool updateVerticalScrollBarOnly)
+        private void OnAddedElement_Phase2(int slot, int count, bool updateVerticalScrollBarOnly)
         {
             if (slot < this.DisplayData.FirstScrollingSlot - 1)
             {
                 // The element was added above our viewport so it pushes the VerticalOffset down
-                double elementHeight = this.RowGroupHeadersTable.Contains(slot) ? this.RowGroupHeaderHeightEstimate : this.RowHeightEstimate;
+                double elementsHeight = 0;
+                for (var slotIndex = slot; slotIndex < slot + count; slotIndex++)
+                {
+                    elementsHeight += this.RowGroupHeadersTable.Contains(slotIndex) ? this.RowGroupHeaderHeightEstimate : this.RowHeightEstimate;
+                }
 
-                SetVerticalOffset(_verticalOffset + elementHeight);
+                SetVerticalOffset(_verticalOffset + elementsHeight);
             }
 
             if (updateVerticalScrollBarOnly)
@@ -2117,7 +2141,7 @@ namespace CommunityToolkit.WinUI.UI.Controls
                     }
 
                     DataGridRowGroupInfo newGroupInfo = new DataGridRowGroupInfo(group, Visibility.Visible, parentGroupInfo.Level + 1, insertSlot, insertSlot);
-                    InsertElementAt(insertSlot, -1 /*rowIndex*/, null /*item*/, newGroupInfo, isCollapsed);
+                    InsertElementsAt(insertSlot, rowIndex: -1, items: new object[] { null }, newGroupInfo, isCollapsed);
                     this.RowGroupHeadersTable.AddValue(insertSlot, newGroupInfo);
                 }
                 else
@@ -2130,7 +2154,7 @@ namespace CommunityToolkit.WinUI.UI.Controls
                         AutoGenerateColumnsPrivate();
                     }
 
-                    InsertElementAt(insertSlot, rowIndex, insertedItem /*item*/, null /*rowGroupInfo*/, isCollapsed);
+                    InsertElementsAt(insertSlot, rowIndex, items: new[] { insertedItem }, null /*rowGroupInfo*/, isCollapsed);
                 }
 
                 CorrectLastSubItemSlotsAfterInsertion(parentGroupInfo);
@@ -2258,14 +2282,14 @@ namespace CommunityToolkit.WinUI.UI.Controls
             }
         }
 
-        private void OnInsertedElement_Phase2(int slot, bool updateVerticalScrollBarOnly, bool isCollapsed)
+        internal void OnInsertedElement_Phase2(int slot, int count, bool updateVerticalScrollBarOnly, bool isCollapsed)
         {
             DiagnosticsDebug.Assert(slot >= 0, "Expected positive slot.");
 
             if (!isCollapsed)
             {
                 // Same effect as adding a row
-                OnAddedElement_Phase2(slot, updateVerticalScrollBarOnly);
+                OnAddedElement_Phase2(slot, count, updateVerticalScrollBarOnly);
             }
         }
 

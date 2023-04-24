@@ -891,8 +891,8 @@ namespace CommunityToolkit.WinUI.UI.Controls.DataGridInternals
             {
                 case NotifyCollectionChangedAction.Add:
                     DiagnosticsDebug.Assert(e.NewItems != null, "Unexpected NotifyCollectionChangedAction.Add notification");
-                    DiagnosticsDebug.Assert(this.ShouldAutoGenerateColumns || this.IsGrouping || e.NewItems.Count == 1, "Expected NewItems.Count equals 1.");
-                    NotifyingDataSource_Add(e.NewStartingIndex);
+                    DiagnosticsDebug.Assert(this.ShouldAutoGenerateColumns || this.IsGrouping || e.NewItems.Count > 0, "Expected NewItems.Count more than 0.");
+                    NotifyingDataSource_Add(e.NewStartingIndex, e.NewItems.Count);
                     break;
 
                 case NotifyCollectionChangedAction.Remove:
@@ -940,7 +940,7 @@ namespace CommunityToolkit.WinUI.UI.Controls.DataGridInternals
                     throw new NotSupportedException();
 
                 case CollectionChange.ItemInserted:
-                    NotifyingDataSource_Add(index);
+                    NotifyingDataSource_Add(index, 1);
                     break;
 
                 case CollectionChange.ItemRemoved:
@@ -959,18 +959,18 @@ namespace CommunityToolkit.WinUI.UI.Controls.DataGridInternals
             }
         }
 
-        private void NotifyingDataSource_Add(int index)
+        private void NotifyingDataSource_Add(int index, int count)
         {
             if (this.ShouldAutoGenerateColumns)
             {
                 // The columns are also affected (not just rows) in this case, so reset everything.
-                _owner.InitializeElements(false /*recycleRows*/);
+                _owner.InitializeElements(recycleRows: false);
             }
             else if (!this.IsGrouping)
             {
                 // If we're grouping then we handle this through the CollectionViewGroup notifications.
                 // Add is a single item operation.
-                _owner.InsertRowAt(index);
+                _owner.InsertRowAt(index, count);
             }
         }
 
