@@ -3,6 +3,8 @@
 // See the LICENSE file in the project root for more information.
 
 using Microsoft.UI.Xaml.Data;
+using System;
+using System.Collections.Specialized;
 using Windows.Foundation.Collections;
 
 namespace CommunityToolkit.WinUI.UI
@@ -10,8 +12,10 @@ namespace CommunityToolkit.WinUI.UI
     /// <summary>
     /// A collection view implementation that supports filtering, grouping, sorting and incremental loading
     /// </summary>
-    public partial class AdvancedCollectionView
+    public partial class AdvancedCollectionView : INotifyCollectionChanged
     {
+        public event NotifyCollectionChangedEventHandler CollectionChanged;
+
         /// <summary>
         /// Currently selected item changing event
         /// </summary>
@@ -59,5 +63,45 @@ namespace CommunityToolkit.WinUI.UI
             // ReSharper disable once ExplicitCallerInfoArgument
             OnPropertyChanged(nameof(Count));
         }
+
+        /// <summary>
+        /// Notify listeners that this View has changed
+        /// </summary>
+        /// <remarks>
+        /// CollectionViews (and sub-classes) should take their filter/sort/grouping
+        /// into account before calling this method to forward CollectionChanged events.
+        /// </remarks>
+        /// <param name="args">
+        /// The NotifyCollectionChangedEventArgs to be passed to the EventHandler
+        /// </param>
+        protected virtual void OnCollectionChanged(NotifyCollectionChangedEventArgs args)
+        {
+            if (_deferCounter > 0)
+            {
+                return;
+            }
+
+            ArgumentNullException.ThrowIfNull(args, nameof(args));
+
+            CollectionChanged?.Invoke(this, args);
+
+            // Collection changes change the count unless an item is being
+            // replaced or moved within the collection.
+            if (args.Action != NotifyCollectionChangedAction.Replace)
+            {
+                OnPropertyChanged(nameof(Count));
+            }
+
+            bool isEmpty = _view.Count == 0;
+            if (isEmpty != cachedIsEmpty)
+            {
+                cachedIsEmpty = isEmpty;
+                OnPropertyChanged(nameof(IsEmpty));
+            }
+        }
+
+        private bool cachedIsEmpty = true;
+
+        public bool IsEmpty { get; private set; }
     }
 }

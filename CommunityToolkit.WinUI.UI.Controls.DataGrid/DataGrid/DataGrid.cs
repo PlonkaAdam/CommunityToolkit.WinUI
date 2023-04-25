@@ -1976,7 +1976,7 @@ namespace CommunityToolkit.WinUI.UI.Controls
         /// <returns>The index of the current selection, or -1 if the selection is empty.</returns>
         public int SelectedIndex
         {
-            get { return (int)GetValue(SelectedIndexProperty); }
+            get { return selectedIndexCached; }
             set { SetValue(SelectedIndexProperty, value); }
         }
 
@@ -1989,6 +1989,8 @@ namespace CommunityToolkit.WinUI.UI.Controls
                 typeof(int),
                 typeof(DataGrid),
                 new PropertyMetadata(-1, OnSelectedIndexPropertyChanged));
+
+        private int selectedIndexCached;
 
         /// <summary>
         /// SelectedIndexProperty property changed handler.
@@ -2005,6 +2007,7 @@ namespace CommunityToolkit.WinUI.UI.Controls
                 // GetDataItem returns null if index is >= Count, we do not check newValue
                 // against Count here to avoid enumerating through an Enumerable twice
                 // Setting SelectedItem coerces the finally value of the SelectedIndex
+                dataGrid.selectedIndexCached = index;
                 object newSelectedItem = (index < 0) ? null : dataGrid.DataConnection.GetDataItem(index);
                 dataGrid.SelectedItem = newSelectedItem;
                 if (dataGrid.SelectedItem != newSelectedItem)
