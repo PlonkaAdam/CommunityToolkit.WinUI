@@ -1697,9 +1697,11 @@ namespace CommunityToolkit.WinUI.UI.Controls
         /// </summary>
         public DataGridRowDetailsVisibilityMode RowDetailsVisibilityMode
         {
-            get { return (DataGridRowDetailsVisibilityMode)GetValue(RowDetailsVisibilityModeProperty); }
+            get { return rowDetailsVisibilityModeCached; }
             set { SetValue(RowDetailsVisibilityModeProperty, value); }
         }
+
+        private DataGridRowDetailsVisibilityMode rowDetailsVisibilityModeCached;
 
         /// <summary>
         /// Identifies the RowDetailsVisibilityMode dependency property.
@@ -1719,7 +1721,8 @@ namespace CommunityToolkit.WinUI.UI.Controls
         private static void OnRowDetailsVisibilityModePropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
             DataGrid dataGrid = d as DataGrid;
-            dataGrid.UpdateRowDetailsVisibilityMode((DataGridRowDetailsVisibilityMode)e.NewValue);
+            dataGrid.rowDetailsVisibilityModeCached = (DataGridRowDetailsVisibilityMode)e.NewValue;
+            dataGrid.UpdateRowDetailsVisibilityMode(dataGrid.rowDetailsVisibilityModeCached);
         }
 
         /// <summary>
@@ -2000,14 +2003,13 @@ namespace CommunityToolkit.WinUI.UI.Controls
         private static void OnSelectedIndexPropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
             DataGrid dataGrid = d as DataGrid;
+            int index = (int)e.NewValue;
+            dataGrid.selectedIndexCached = index;
             if (!dataGrid.IsHandlerSuspended(e.Property))
             {
-                int index = (int)e.NewValue;
-
                 // GetDataItem returns null if index is >= Count, we do not check newValue
                 // against Count here to avoid enumerating through an Enumerable twice
                 // Setting SelectedItem coerces the finally value of the SelectedIndex
-                dataGrid.selectedIndexCached = index;
                 object newSelectedItem = (index < 0) ? null : dataGrid.DataConnection.GetDataItem(index);
                 dataGrid.SelectedItem = newSelectedItem;
                 if (dataGrid.SelectedItem != newSelectedItem)
@@ -3936,7 +3938,28 @@ namespace CommunityToolkit.WinUI.UI.Controls
             int newIndex = -1;
             if (selectedItem != null)
             {
-                newIndex = this.DataConnection.IndexOf(selectedItem);
+                // Check if the CurrentSlot is not already correct first
+                if (this.DataConnection.GetDataItem(CurrentSlot) == selectedItem)
+                {
+                    newIndex = CurrentSlot;
+                }
+
+                if (newIndex == -1)
+                {
+                    // Look in the view first
+                    for (var slot = this.DisplayData.FirstScrollingSlot; slot <= this.DisplayData.LastScrollingSlot; slot++)
+                    {
+                        if (this.DataConnection.GetDataItem(slot) == selectedItem)
+                        {
+                            newIndex = slot;
+                        }
+                    }
+                }
+
+                if (newIndex == -1)
+                {
+                    newIndex = this.DataConnection.IndexOf(selectedItem);
+                }
             }
 
             if (this.SelectedIndex != newIndex)
@@ -4245,7 +4268,8 @@ namespace CommunityToolkit.WinUI.UI.Controls
                 }
                 else
                 {
-                    slot = this.SlotFromRowIndex(this.DataConnection.IndexOf(item));
+                    var index = DataConnection.GetDataItem(backupSlot) == item ? backupSlot : this.DataConnection.IndexOf(item);
+                    slot = this.SlotFromRowIndex(index);
                 }
 
                 if (slot == -1)

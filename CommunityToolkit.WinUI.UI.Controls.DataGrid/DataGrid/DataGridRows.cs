@@ -268,39 +268,41 @@ namespace CommunityToolkit.WinUI.UI.Controls
             _noSelectionChangeCount++;
             try
             {
-                bool exceptionAlreadySelected = false;
-                if (_selectedItems.Count > 0)
+                var exceptionAlreadySelected = false;
+                var selectedCount = _selectedItems.Count;
+                if (selectedCount > 0)
                 {
+                    var visibleSlots = new List<int>();
                     // Individually deselecting displayed rows to view potential transitions
-                    for (int slot = this.DisplayData.FirstScrollingSlot;
+                    for (var slot = this.DisplayData.FirstScrollingSlot;
                          slot > -1 && slot <= this.DisplayData.LastScrollingSlot;
                          slot++)
                     {
-                        if (slot != slotException && _selectedItems.ContainsSlot(slot))
+                        if (slot != slotException && IsSlotVisible(slot))
                         {
-                            SelectSlot(slot, false);
-                            this.SelectionHasChanged = true;
+                            visibleSlots.Add(slot);
                         }
                     }
 
                     exceptionAlreadySelected = _selectedItems.ContainsSlot(slotException);
-                    int selectedCount = _selectedItems.Count;
-                    if (selectedCount > 0)
+                    if (selectedCount > 1)
                     {
-                        if (selectedCount > 1)
+                        this.SelectionHasChanged = true;
+                    }
+                    else
+                    {
+                        int currentlySelectedSlot = _selectedItems.GetIndexes().First();
+                        if (currentlySelectedSlot != slotException)
                         {
                             this.SelectionHasChanged = true;
                         }
-                        else
-                        {
-                            int currentlySelectedSlot = _selectedItems.GetIndexes().First();
-                            if (currentlySelectedSlot != slotException)
-                            {
-                                this.SelectionHasChanged = true;
-                            }
-                        }
+                    }
 
-                        _selectedItems.ClearRows();
+                    _selectedItems.ClearRows();
+                    foreach (var slot in visibleSlots)
+                    {
+                        // Update slot state with animation.
+                        SelectDisplayedElement(slot);
                     }
                 }
 
@@ -308,7 +310,7 @@ namespace CommunityToolkit.WinUI.UI.Controls
                 {
                     // Exception row was already selected. It just needs to be marked as selected again.
                     // No transition involved.
-                    _selectedItems.SelectSlot(slotException, true /*select*/);
+                    _selectedItems.SelectSlot(slotException, select: true);
                     if (setAnchorSlot)
                     {
                         this.AnchorSlot = slotException;
@@ -317,7 +319,7 @@ namespace CommunityToolkit.WinUI.UI.Controls
                 else
                 {
                     // Exception row was not selected. It needs to be selected with potential transition
-                    SetRowSelection(slotException, true /*isSelected*/, setAnchorSlot);
+                    SetRowSelection(slotException, isSelected: true, setAnchorSlot);
                 }
             }
             finally

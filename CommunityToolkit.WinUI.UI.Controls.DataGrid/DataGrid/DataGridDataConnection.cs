@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.Design;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
@@ -700,7 +701,16 @@ namespace CommunityToolkit.WinUI.UI.Controls.DataGridInternals
                 _backupSlotForCurrentChanged = backupSlot;
 
                 var itemIsCollectionViewGroup = item is ICollectionViewGroup;
-                this.CollectionView.MoveCurrentTo((itemIsCollectionViewGroup || this.IndexOf(item) == this.NewItemPlaceholderIndex) ? null : item);
+                int? potentialIndex = backupSlot >= 0 && GetDataItem(backupSlot) == item ? backupSlot : null;
+
+                if (itemIsCollectionViewGroup || (potentialIndex ?? this.IndexOf(item)) == this.NewItemPlaceholderIndex)
+                {
+                    this.CollectionView.MoveCurrentTo(null);
+                }
+                else
+                {
+                    this.CollectionView.MoveCurrentToPosition(potentialIndex ?? this.IndexOf(item));
+                }
 
                 _expectingCurrentChanged = false;
             }
