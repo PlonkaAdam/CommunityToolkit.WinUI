@@ -3,6 +3,7 @@
 // See the LICENSE file in the project root for more information.
 
 using System;
+using System.Buffers;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -397,7 +398,7 @@ namespace CommunityToolkit.WinUI.UI.Controls
         internal void InsertElementsAt(
             int slot,
             int rowIndex,
-            IList items,
+            ReadOnlySpan<object> items,
             DataGridRowGroupInfo groupInfo,
             bool isCollapsed)
         {
@@ -409,11 +410,12 @@ namespace CommunityToolkit.WinUI.UI.Controls
             var updateVerticalScrollBarOnly = true;
             var currentSlot = slot;
             var isReadOnly = IsReadOnly;
+            var isVerticalScrollBarCollapsed = _vScrollBar?.Visibility == Visibility.Collapsed;
             foreach (var item in items)
             {
                 if (isCollapsed || (isReadOnly && rowIndex == this.DataConnection.NewItemPlaceholderIndex))
                 {
-                    InsertElement(slot, element: null, isCollapsed: true, isRow);
+                    InsertElement(currentSlot, element: null, isCollapsed: true, isRow);
                 }
                 else if (SlotIsDisplayed(currentSlot))
                 {
@@ -431,7 +433,7 @@ namespace CommunityToolkit.WinUI.UI.Controls
                 }
                 else
                 {
-                    if (_vScrollBar?.Visibility == Visibility.Collapsed)
+                    if (isVerticalScrollBarCollapsed)
                     {
                         updateVerticalScrollBarOnly = false;
                     }
@@ -446,27 +448,40 @@ namespace CommunityToolkit.WinUI.UI.Controls
                 }
             }
 
+            // If we've inserted rows before the current selected item, update its index
+            if (slot <= this.SelectedIndex)
+            {
+                this.SetValueNoCallback(SelectedIndexProperty, this.SelectedIndex + items.Length);
+            }
+
             // Fix the Index of all following rows
-            CorrectSlotsAfterInsertion(slot, items.Count, isCollapsed, isRow);
-            OnInsertedElement_Phase2(slot, items.Count, updateVerticalScrollBarOnly, isCollapsed);
+            CorrectSlotsAfterInsertion(slot, items.Length, isCollapsed, isRow);
+            OnInsertedElement_Phase2(slot, items.Length, updateVerticalScrollBarOnly, isCollapsed);
         }
 
         internal void InsertRowAt(int firstRowIndex, int count)
         {
             var slot = SlotFromRowIndex(firstRowIndex);
-            var items = new List<object>(count);
-            for (var i = 0; i < count; i++)
+            var items = ArrayPool<object>.Shared.Rent(count);
+            try
             {
-                items.Add(DataConnection.GetDataItem(firstRowIndex + i));
-            }
+                for (var i = 0; i < count; i++)
+                {
+                    items[i] = DataConnection.GetDataItem(firstRowIndex + i);
+                }
 
-            // isCollapsed below is always false because we only use the method if we're not grouping
-            InsertElementsAt(
-                slot,
-                firstRowIndex,
-                items,
-                groupInfo: null,
-                isCollapsed: false);
+                // isCollapsed below is always false because we only use the method if we're not grouping
+                InsertElementsAt(
+                    slot,
+                    firstRowIndex,
+                    items.AsSpan()[0..count],
+                    groupInfo: null,
+                    isCollapsed: false);
+            }
+            finally
+            {
+                ArrayPool<object>.Shared.Return(items);
+            }
         }
 
         internal bool IsColumnDisplayed(int columnIndex)
@@ -2340,12 +2355,6 @@ namespace CommunityToolkit.WinUI.UI.Controls
             else
             {
                 _collapsedSlotsTable.InsertIndex(slotInserted);
-            }
-
-            // If we've inserted rows before the current selected item, update its index
-            if (slotInserted <= this.SelectedIndex)
-            {
-                this.SetValueNoCallback(SelectedIndexProperty, this.SelectedIndex + 1);
             }
         }
 

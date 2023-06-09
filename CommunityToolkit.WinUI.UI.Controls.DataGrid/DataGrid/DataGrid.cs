@@ -1993,7 +1993,7 @@ namespace CommunityToolkit.WinUI.UI.Controls
                 typeof(DataGrid),
                 new PropertyMetadata(-1, OnSelectedIndexPropertyChanged));
 
-        private int selectedIndexCached;
+        private int selectedIndexCached = -1;
 
         /// <summary>
         /// SelectedIndexProperty property changed handler.
