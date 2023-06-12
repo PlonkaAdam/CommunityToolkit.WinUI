@@ -274,6 +274,7 @@ namespace CommunityToolkit.WinUI.UI.Controls
                 if (selectedCount > 0)
                 {
                     var visibleSlots = new List<int>();
+
                     // Individually deselecting displayed rows to view potential transitions
                     for (var slot = this.DisplayData.FirstScrollingSlot;
                          slot > -1 && slot <= this.DisplayData.LastScrollingSlot;

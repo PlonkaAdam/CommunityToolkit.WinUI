@@ -1101,9 +1101,9 @@ namespace CommunityToolkit.WinUI.UI.Controls
             // Rows
             if (newValueRows != oldValueRows && dataGrid._rowsPresenter != null)
             {
-                foreach (FrameworkElement element in dataGrid._rowsPresenter.Children)
+                foreach (var element in dataGrid._rowsPresenter.Children)
                 {
-                    DataGridRow row = element as DataGridRow;
+                    var row = element as DataGridRow;
                     if (row != null)
                     {
                         row.EnsureHeaderStyleAndVisibility(null);
@@ -1115,7 +1115,7 @@ namespace CommunityToolkit.WinUI.UI.Controls
                     }
                     else
                     {
-                        DataGridRowGroupHeader rowGroupHeader = element as DataGridRowGroupHeader;
+                        var rowGroupHeader = element as DataGridRowGroupHeader;
                         if (rowGroupHeader != null)
                         {
                             rowGroupHeader.EnsureHeaderStyleAndVisibility(null);

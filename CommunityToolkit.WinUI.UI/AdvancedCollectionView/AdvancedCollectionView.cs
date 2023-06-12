@@ -601,7 +601,8 @@ namespace CommunityToolkit.WinUI.UI
             }
 
             _sortProperties.Clear();
-            //OnVectorChanged(new VectorChangedEventArgs(CollectionChange.Reset));
+
+            // OnVectorChanged(new VectorChangedEventArgs(CollectionChange.Reset));
             OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
             MoveCurrentTo(currentItem);
         }
@@ -660,6 +661,7 @@ namespace CommunityToolkit.WinUI.UI
             if (added > 0)
             {
                 OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, newItems, newStartingIndex));
+
                 // OnVectorChanged(new VectorChangedEventArgs(CollectionChange.Reset));
             }
 

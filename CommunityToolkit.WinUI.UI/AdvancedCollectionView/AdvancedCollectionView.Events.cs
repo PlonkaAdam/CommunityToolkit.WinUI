@@ -2,9 +2,9 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
-using Microsoft.UI.Xaml.Data;
 using System;
 using System.Collections.Specialized;
+using Microsoft.UI.Xaml.Data;
 using Windows.Foundation.Collections;
 
 namespace CommunityToolkit.WinUI.UI
@@ -14,6 +14,7 @@ namespace CommunityToolkit.WinUI.UI
     /// </summary>
     public partial class AdvancedCollectionView : INotifyCollectionChanged
     {
+        /// <inheritdoc />
         public event NotifyCollectionChangedEventHandler CollectionChanged;
 
         /// <summary>
@@ -102,6 +103,9 @@ namespace CommunityToolkit.WinUI.UI
 
         private bool cachedIsEmpty = true;
 
+        /// <summary>
+        /// Gets a value indicating whether collection is empty.
+        /// </summary>
         public bool IsEmpty { get; private set; }
     }
 }
