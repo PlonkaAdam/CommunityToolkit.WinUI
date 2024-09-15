@@ -16,7 +16,7 @@ namespace CommunityToolkit.WinUI.UI.Controls
 {
     internal class DataGridSelectedItemsCollection : IList
     {
-        private List<object> _oldSelectedItemsCache;
+        private HashSet<object> _oldSelectedItemsCache;
         private IndexToValueTable<bool> _oldSelectedSlotsTable;
         private List<object> _selectedItemsCache;
         private IndexToValueTable<bool> _selectedSlotsTable;
@@ -24,7 +24,7 @@ namespace CommunityToolkit.WinUI.UI.Controls
         public DataGridSelectedItemsCollection(DataGrid owningGrid)
         {
             this.OwningGrid = owningGrid;
-            _oldSelectedItemsCache = new List<object>();
+            _oldSelectedItemsCache = new HashSet<object>();
             _oldSelectedSlotsTable = new IndexToValueTable<bool>();
             _selectedItemsCache = new List<object>();
             _selectedSlotsTable = new IndexToValueTable<bool>();
@@ -370,7 +370,7 @@ namespace CommunityToolkit.WinUI.UI.Controls
 
             // The current selection becomes the old selection
             _oldSelectedSlotsTable = _selectedSlotsTable.Copy();
-            _oldSelectedItemsCache = new List<object>(_selectedItemsCache);
+            _oldSelectedItemsCache = new HashSet<object>(_selectedItemsCache);
 
             return new SelectionChangedEventArgs(removedSelectedItems, addedSelectedItems);
         }
@@ -428,6 +428,7 @@ namespace CommunityToolkit.WinUI.UI.Controls
 
             if (select)
             {
+                _selectedItemsCache.Capacity = endSlot - startSlot + _selectedItemsCache.Count + 1;
                 while (itemSlot <= endItemSlot)
                 {
                     // Add the newly selected item slots by skipping over the RowGroupHeaderSlots

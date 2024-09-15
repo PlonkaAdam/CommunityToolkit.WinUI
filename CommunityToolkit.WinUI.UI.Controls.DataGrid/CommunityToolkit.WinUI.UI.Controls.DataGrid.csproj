@@ -1,8 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>net5.0-windows10.0.18362.0</TargetFrameworks>
+    <TargetFrameworks>net7.0-windows10.0.18362.0</TargetFrameworks>
     <RootNamespace>CommunityToolkit.WinUI.UI.Controls</RootNamespace>
+    <UseWinUI>true</UseWinUI>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -11,6 +12,7 @@
       This library provides a XAML DataGrid control. It is a part of the Windows Community Toolkit.
     </Description>
     <PackageTags>Controls;XAML;UI;Data;Grid;DataGrid</PackageTags>
+    <BaseOutputPath>bin\</BaseOutputPath>
   </PropertyGroup>
 
   <ItemGroup>

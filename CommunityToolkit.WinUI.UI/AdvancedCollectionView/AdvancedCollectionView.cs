@@ -601,7 +601,9 @@ namespace CommunityToolkit.WinUI.UI
             }
 
             _sortProperties.Clear();
-            OnVectorChanged(new VectorChangedEventArgs(CollectionChange.Reset));
+
+            // OnVectorChanged(new VectorChangedEventArgs(CollectionChange.Reset));
+            OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Reset));
             MoveCurrentTo(currentItem);
         }
 
@@ -614,14 +616,7 @@ namespace CommunityToolkit.WinUI.UI
                     AttachPropertyChangedHandler(e.NewItems);
                     if (_deferCounter <= 0)
                     {
-                        if (e.NewItems?.Count == 1)
-                        {
-                            HandleItemAdded(e.NewStartingIndex, e.NewItems[0]);
-                        }
-                        else
-                        {
-                            HandleSourceChanged();
-                        }
+                        HandleItemsAdded(e.NewStartingIndex, e.NewItems);
                     }
 
                     break;
@@ -650,6 +645,36 @@ namespace CommunityToolkit.WinUI.UI
 
                     break;
             }
+        }
+
+        private bool HandleItemsAdded(int newStartingIndex, IList newItems, int? viewIndex = null)
+        {
+            var added = 0;
+            foreach (var item in newItems ?? new object[] { null })
+            {
+                if (HandleItemAdded(newStartingIndex, item, viewIndex))
+                {
+                    added++;
+                }
+            }
+
+            if (added > 0)
+            {
+                OnCollectionChanged(new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, newItems, newStartingIndex));
+
+                // OnVectorChanged(new VectorChangedEventArgs(CollectionChange.Reset));
+            }
+
+            return added > 0;
+
+            /*if (added == 1)
+            {
+                var e = new VectorChangedEventArgs(CollectionChange.ItemInserted, newViewIndex, newItem);
+                OnVectorChanged(e);
+            } else
+            {
+
+            }*/
         }
 
         private bool HandleItemAdded(int newStartingIndex, object newItem, int? viewIndex = null)
@@ -714,8 +739,6 @@ namespace CommunityToolkit.WinUI.UI
                 CurrentPosition++;
             }
 
-            var e = new VectorChangedEventArgs(CollectionChange.ItemInserted, newViewIndex, newItem);
-            OnVectorChanged(e);
             return true;
         }
 

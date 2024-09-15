@@ -1345,8 +1345,8 @@ namespace CommunityToolkit.WinUI.UI.Data.Utilities
         {
             ProcessCollectionChangedWithAdjustedIndex(
                 (EffectiveNotifyCollectionChangedAction)args.Action,
-                (args.OldItems == null || args.OldItems.Count == 0) ? null : args.OldItems[0],
-                (args.NewItems == null || args.NewItems.Count == 0) ? null : args.NewItems[0],
+                args.OldItems,
+                args.NewItems,
                 adjustedOldIndex,
                 adjustedNewIndex);
         }
@@ -1355,13 +1355,13 @@ namespace CommunityToolkit.WinUI.UI.Data.Utilities
         {
             ProcessCollectionChangedWithAdjustedIndex(
                 EffectiveNotifyCollectionChangedAction.Move,
-                movedItem,
-                movedItem,
+                new[] { movedItem },
+                new[] { movedItem },
                 adjustedOldIndex,
                 adjustedNewIndex);
         }
 
-        private void ProcessCollectionChangedWithAdjustedIndex(EffectiveNotifyCollectionChangedAction action, object oldItem, object newItem, int adjustedOldIndex, int adjustedNewIndex)
+        private void ProcessCollectionChangedWithAdjustedIndex(EffectiveNotifyCollectionChangedAction action, IList oldItems, IList newItems, int adjustedOldIndex, int adjustedNewIndex)
         {
             // Finding out the effective Action after filtering and sorting.
             EffectiveNotifyCollectionChangedAction effectiveAction = action;
@@ -1440,8 +1440,8 @@ namespace CommunityToolkit.WinUI.UI.Data.Utilities
 #endif
                     if (!IsGrouping)
                     {
-                        AdjustCurrencyForAdd(adjustedNewIndex);
-                        args = new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, newItem, adjustedNewIndex);
+                        AdjustCurrencyForAdd(adjustedNewIndex, newItems.Count);
+                        args = new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, newItems, adjustedNewIndex);
                     }
 #if FEATURE_ICOLLECTIONVIEW_GROUP
                     else
@@ -1469,8 +1469,8 @@ namespace CommunityToolkit.WinUI.UI.Data.Utilities
 
                     if (!IsGrouping)
                     {
-                        AdjustCurrencyForRemove(adjustedOldIndex);
-                        args = new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, oldItem, adjustedOldIndex);
+                        AdjustCurrencyForRemove(adjustedOldIndex, oldItems.Count);
+                        args = new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, oldItems, adjustedOldIndex);
                     }
 #if FEATURE_ICOLLECTIONVIEW_GROUP
                     else
@@ -1491,8 +1491,8 @@ namespace CommunityToolkit.WinUI.UI.Data.Utilities
 
                     if (!IsGrouping)
                     {
-                        AdjustCurrencyForReplace(adjustedOldIndex);
-                        args = new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Replace, newItem, oldItem, adjustedOldIndex);
+                        AdjustCurrencyForReplace(adjustedOldIndex, oldItems.Count);
+                        args = new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Replace, newItems, oldItems, adjustedOldIndex);
                     }
 #if FEATURE_ICOLLECTIONVIEW_GROUP
                     else
@@ -1529,11 +1529,11 @@ namespace CommunityToolkit.WinUI.UI.Data.Utilities
 
                     if (!IsGrouping)
                     {
-                        AdjustCurrencyForMove(adjustedOldIndex, adjustedNewIndex);
+                        AdjustCurrencyForMove(adjustedOldIndex, adjustedNewIndex, newItems.Count);
 
                         // move/replace
-                        args2 = new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, newItem, adjustedNewIndex);
-                        args = new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, oldItem, adjustedOldIndex);
+                        args2 = new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Add, newItems, adjustedNewIndex);
+                        args = new NotifyCollectionChangedEventArgs(NotifyCollectionChangedAction.Remove, oldItems, adjustedOldIndex);
                     }
 #if FEATURE_ICOLLECTIONVIEW_GROUP
                     else if (!simpleMove)
@@ -1912,16 +1912,16 @@ namespace CommunityToolkit.WinUI.UI.Data.Utilities
             switch (e.Action)
             {
                 case NotifyCollectionChangedAction.Add:
-                    DiagnosticsDebug.Assert(e.NewItems.Count == 1, "Unexpected NotifyCollectionChangedEventArgs.NewItems.Count for Add action");
+                    DiagnosticsDebug.Assert(e.NewItems.Count > 0, "Unexpected NotifyCollectionChangedEventArgs.NewItems.Count for Add action");
                     break;
 
                 case NotifyCollectionChangedAction.Remove:
-                    DiagnosticsDebug.Assert(e.OldItems.Count == 1, "Unexpected NotifyCollectionChangedEventArgs.OldItems.Count for Remove action");
+                    DiagnosticsDebug.Assert(e.OldItems.Count > 0, "Unexpected NotifyCollectionChangedEventArgs.OldItems.Count for Remove action");
                     break;
 
                 case NotifyCollectionChangedAction.Replace:
-                    DiagnosticsDebug.Assert(e.OldItems.Count == 1, "Unexpected NotifyCollectionChangedEventArgs.OldItems.Count for Replace action");
-                    DiagnosticsDebug.Assert(e.NewItems.Count == 1, "Unexpected NotifyCollectionChangedEventArgs.NewItems.Count for Replace action");
+                    DiagnosticsDebug.Assert(e.OldItems.Count > 0, "Unexpected NotifyCollectionChangedEventArgs.OldItems.Count for Replace action");
+                    DiagnosticsDebug.Assert(e.NewItems.Count > 0, "Unexpected NotifyCollectionChangedEventArgs.NewItems.Count for Replace action");
                     break;
 
                 case NotifyCollectionChangedAction.Reset:
@@ -2157,7 +2157,7 @@ namespace CommunityToolkit.WinUI.UI.Data.Utilities
         }
 
         // fix up CurrentPosition and CurrentItem after a collection change
-        private void AdjustCurrencyForAdd(int index)
+        private void AdjustCurrencyForAdd(int index, int count)
         {
             if (InternalCount == 1)
             {
@@ -2173,7 +2173,7 @@ namespace CommunityToolkit.WinUI.UI.Data.Utilities
             else if (index <= CurrentPosition)
             {
                 // adjust current index if insertion is earlier
-                int newPosition = CurrentPosition + 1;
+                int newPosition = CurrentPosition + count;
 
                 if (newPosition < InternalCount)
                 {
@@ -2194,50 +2194,51 @@ namespace CommunityToolkit.WinUI.UI.Data.Utilities
         }
 
         // fix up CurrentPosition and CurrentItem after a collection change
-        private void AdjustCurrencyForRemove(int index)
+        private void AdjustCurrencyForRemove(int index, int count)
         {
             // adjust current index if deletion is earlier
-            if (index < CurrentPosition)
+            if (index + count - 1 < CurrentPosition)
             {
-                SetCurrent(CurrentItem, CurrentPosition - 1);
+                SetCurrent(CurrentItem, CurrentPosition - count);
             }
 
             // remember to move currency off the deleted element
-            else if (index == CurrentPosition)
+            else if (index <= CurrentPosition && index + count > CurrentPosition)
             {
                 _currentElementWasRemoved = true;
             }
         }
 
         // fix up CurrentPosition and CurrentItem after a collection change
-        private void AdjustCurrencyForMove(int oldIndex, int newIndex)
+        private void AdjustCurrencyForMove(int oldIndex, int newIndex, int count)
         {
-            if (oldIndex == CurrentPosition)
+            if (oldIndex <= CurrentPosition && oldIndex + count > CurrentPosition)
             {
                 // moving the current item - currency moves with the item (bug 1942184)
-                SetCurrent(GetItemAt(newIndex), newIndex);
+                var delta = CurrentPosition - oldIndex;
+                SetCurrent(GetItemAt(newIndex + delta), newIndex + delta);
             }
             else if (oldIndex < CurrentPosition && CurrentPosition <= newIndex)
             {
                 // moving an item from before current position to after -
-                // current item shifts back one position
-                SetCurrent(CurrentItem, CurrentPosition - 1);
+                // current item shifts back
+                SetCurrent(CurrentItem, CurrentPosition - count);
             }
             else if (newIndex <= CurrentPosition && CurrentPosition < oldIndex)
             {
                 // moving an item from after current position to before -
-                // current item shifts ahead one position
-                SetCurrent(CurrentItem, CurrentPosition + 1);
+                // current item shifts ahead
+                SetCurrent(CurrentItem, CurrentPosition + count);
             }
 
             // else no change necessary
         }
 
         // fix up CurrentPosition and CurrentItem after a collection change
-        private void AdjustCurrencyForReplace(int index)
+        private void AdjustCurrencyForReplace(int index, int count)
         {
             // remember to move currency off the deleted element
-            if (index == CurrentPosition)
+            if (index <= CurrentPosition && index + count > CurrentPosition)
             {
                 _currentElementWasRemoved = true;
             }

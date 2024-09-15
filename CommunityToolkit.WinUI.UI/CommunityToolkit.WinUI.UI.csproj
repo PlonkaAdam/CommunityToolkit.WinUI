@@ -2,8 +2,8 @@
 
   <PropertyGroup>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <UseWindowsDesktopSdk>true</UseWindowsDesktopSdk>
-    <TargetFrameworks>net5.0-windows10.0.18362.0</TargetFrameworks>
+    <TargetFrameworks>net7.0-windows10.0.18362.0</TargetFrameworks>
+    <UseWinUI>true</UseWinUI>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -50,7 +50,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="CommunityToolkit.Common" Version="7.1.2" />
+    <PackageReference Include="CommunityToolkit.Common" Version="8.1.0" />
   </ItemGroup>
 
   <ItemGroup>

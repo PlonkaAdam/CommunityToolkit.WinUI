@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.Design;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
@@ -700,7 +701,16 @@ namespace CommunityToolkit.WinUI.UI.Controls.DataGridInternals
                 _backupSlotForCurrentChanged = backupSlot;
 
                 var itemIsCollectionViewGroup = item is ICollectionViewGroup;
-                this.CollectionView.MoveCurrentTo((itemIsCollectionViewGroup || this.IndexOf(item) == this.NewItemPlaceholderIndex) ? null : item);
+                int? potentialIndex = backupSlot >= 0 && GetDataItem(backupSlot) == item ? backupSlot : null;
+
+                if (itemIsCollectionViewGroup || (potentialIndex ?? this.IndexOf(item)) == this.NewItemPlaceholderIndex)
+                {
+                    this.CollectionView.MoveCurrentTo(null);
+                }
+                else
+                {
+                    this.CollectionView.MoveCurrentToPosition(potentialIndex ?? this.IndexOf(item));
+                }
 
                 _expectingCurrentChanged = false;
             }
@@ -891,8 +901,8 @@ namespace CommunityToolkit.WinUI.UI.Controls.DataGridInternals
             {
                 case NotifyCollectionChangedAction.Add:
                     DiagnosticsDebug.Assert(e.NewItems != null, "Unexpected NotifyCollectionChangedAction.Add notification");
-                    DiagnosticsDebug.Assert(this.ShouldAutoGenerateColumns || this.IsGrouping || e.NewItems.Count == 1, "Expected NewItems.Count equals 1.");
-                    NotifyingDataSource_Add(e.NewStartingIndex);
+                    DiagnosticsDebug.Assert(this.ShouldAutoGenerateColumns || this.IsGrouping || e.NewItems.Count > 0, "Expected NewItems.Count more than 0.");
+                    NotifyingDataSource_Add(e.NewStartingIndex, e.NewItems.Count);
                     break;
 
                 case NotifyCollectionChangedAction.Remove:
@@ -940,7 +950,7 @@ namespace CommunityToolkit.WinUI.UI.Controls.DataGridInternals
                     throw new NotSupportedException();
 
                 case CollectionChange.ItemInserted:
-                    NotifyingDataSource_Add(index);
+                    NotifyingDataSource_Add(index, 1);
                     break;
 
                 case CollectionChange.ItemRemoved:
@@ -959,18 +969,18 @@ namespace CommunityToolkit.WinUI.UI.Controls.DataGridInternals
             }
         }
 
-        private void NotifyingDataSource_Add(int index)
+        private void NotifyingDataSource_Add(int index, int count)
         {
             if (this.ShouldAutoGenerateColumns)
             {
                 // The columns are also affected (not just rows) in this case, so reset everything.
-                _owner.InitializeElements(false /*recycleRows*/);
+                _owner.InitializeElements(recycleRows: false);
             }
             else if (!this.IsGrouping)
             {
                 // If we're grouping then we handle this through the CollectionViewGroup notifications.
                 // Add is a single item operation.
-                _owner.InsertRowAt(index);
+                _owner.InsertRowAt(index, count);
             }
         }
 
